@@ -24,6 +24,22 @@
         }
         h1 { font-size: 1.2rem; margin-top: 0; color: #2c3e50; }
         .popup-content b { color: #e67e22; }
+        .legend {
+            background: white;
+            padding: 10px;
+            line-height: 1.5;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        .legend i {
+            width: 14px;
+            height: 14px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.9;
+            border-radius: 50%;
+            border: 1px solid #fff;
+        }
     </style>
 </head>
 <body>
@@ -44,6 +60,31 @@
     <script>
         // Initialisation de la carte (centrée sur Bordeaux)
         const map = L.map('map').setView([44.837789, -0.57918], 12);
+
+        // ... (tileLayer et GeoJSON existants) ...
+
+        // Ajout de la légende
+        const legend = L.control({position: 'bottomright'});
+        legend.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'info legend');
+            const types = [
+                'Association', 
+                'Bibliothèque / Médiathèque', 
+                'Commune (Ville, CCAS, Centre Culturel…)',
+                'Centre social', 
+                'Pôle Emploi', 
+                'Tiers-lieu / Coworking / FabLab / Hackerspace'
+            ];
+            
+            div.innerHTML += '<b>Types de lieux</b><br>';
+            for (let i = 0; i < types.length; i++) {
+                div.innerHTML +=
+                    '<i style="background:' + getColor(types[i]) + '"></i> ' +
+                    (types[i].includes('(') ? types[i].split(' (')[0] : types[i]) + '<br>';
+            }
+            return div;
+        };
+        legend.addTo(map);
 
         // Utilisation d'un fond de carte alternatif (CartoDB Positron - clair et propre)
         // Pas d'OpenStreetMap standard comme demandé
@@ -68,6 +109,21 @@
             })
             .catch(err => console.error("Erreur chargement GeoJSON:", err));
 
+        // Palette de couleurs par type de lieu
+        const colors = {
+            'Association': '#e67e22',        // Orange
+            'Bibliothèque / Médiathèque': '#3498db', // Bleu
+            'Commune (Ville, CCAS, Centre Culturel…)': '#27ae60', // Vert
+            'Centre social': '#2ecc71',      // Vert clair
+            'Pôle Emploi': '#e74c3c',        // Rouge
+            'Tiers-lieu / Coworking / FabLab / Hackerspace': '#9b59b6', // Violet
+            'Autre / Inconnu': '#95a5a6'     // Gris
+        };
+
+        function getColor(type) {
+            return colors[type] || '#7f8c8d'; // Gris par défaut
+        }
+
         // Fonction pour charger et parser le CSV
         function loadData() {
             Papa.parse('RAW_met_lieux_inclusion_numerique.csv', {
@@ -84,14 +140,14 @@
                             const lng = parseFloat(row.longitude);
 
                             if (!isNaN(lat) && !isNaN(lng)) {
-                                // Remplacement du marker par un circleMarker (point)
+                                // Remplacement du marker par un circleMarker (point) avec couleur dynamique
                                 const marker = L.circleMarker([lat, lng], {
-                                    radius: 6,
-                                    fillColor: "#e67e22",
+                                    radius: 7,
+                                    fillColor: getColor(row.type_lieu),
                                     color: "#fff",
-                                    weight: 1,
+                                    weight: 1.5,
                                     opacity: 1,
-                                    fillOpacity: 0.8
+                                    fillOpacity: 0.9
                                 }).addTo(map);
                                 
                                 // Contenu de la popup
