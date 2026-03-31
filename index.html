@@ -67,20 +67,13 @@
         const legend = L.control({position: 'bottomright'});
         legend.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'info legend');
-            const types = [
-                'Association', 
-                'Bibliothèque / Médiathèque', 
-                'Commune (Ville, CCAS, Centre Culturel…)',
-                'Centre social', 
-                'Pôle Emploi', 
-                'Tiers-lieu / Coworking / FabLab / Hackerspace'
-            ];
+            const categories = Object.keys(serviceColors);
             
-            div.innerHTML += '<b>Types de lieux</b><br>';
-            for (let i = 0; i < types.length; i++) {
+            div.innerHTML += '<b>Services Dominants</b><br>';
+            for (let i = 0; i < categories.length; i++) {
                 div.innerHTML +=
-                    '<i style="background:' + getColor(types[i]) + '"></i> ' +
-                    (types[i].includes('(') ? types[i].split(' (')[0] : types[i]) + '<br>';
+                    '<i style="background:' + serviceColors[categories[i]] + '"></i> ' +
+                    categories[i] + '<br>';
             }
             return div;
         };
@@ -109,19 +102,32 @@
             })
             .catch(err => console.error("Erreur chargement GeoJSON:", err));
 
-        // Palette de couleurs par type de lieu
-        const colors = {
-            'Association': '#e67e22',        // Orange
-            'Bibliothèque / Médiathèque': '#3498db', // Bleu
-            'Commune (Ville, CCAS, Centre Culturel…)': '#27ae60', // Vert
-            'Centre social': '#2ecc71',      // Vert clair
-            'Pôle Emploi': '#e74c3c',        // Rouge
-            'Tiers-lieu / Coworking / FabLab / Hackerspace': '#9b59b6', // Violet
-            'Autre / Inconnu': '#95a5a6'     // Gris
+        // Palette de couleurs par catégorie de SERVICE dominant
+        const serviceColors = {
+            'Emploi': '#e74c3c',         // Rouge (CV, recherche d'emploi)
+            'Administratif': '#3498db',   // Bleu (Impôts, CAF, droits sociaux)
+            'Création': '#9b59b6',        // Violet (Code, Photo, FabLab)
+            'Généraliste': '#e67e22',     // Orange (Accès internet, mails, aide de base)
+            'Matériel': '#f1c40f'         // Jaune (Simple accès au matériel)
         };
 
-        function getColor(type) {
-            return colors[type] || '#7f8c8d'; // Gris par défaut
+        function getServiceCategory(row) {
+            const ns = row.niveau_service || "";
+            const desc = (row.description || "").toLowerCase();
+            
+            // Logique de détection par priorité
+            if (ns.includes('CODE/Expert') || ns.includes('PHOTO/Expert') || ns.includes('PAO/Expert')) return 'Création';
+            if (ns.includes('CV/Expert') || ns.includes('ORGRECHEMPLOI/Expert')) return 'Emploi';
+            if (ns.includes('IMPOTS/Expert') || ns.includes('DROITSSOCIAUXRSACAF/Expert') || ns.includes('CPAM/Expert')) return 'Administratif';
+            if (desc.includes('pôle emploi') || desc.includes('recherche d\'emploi')) return 'Emploi';
+            if (ns.includes('INTERNET/Expert') || ns.includes('MAILS/Expert')) return 'Généraliste';
+            
+            return 'Matériel'; // Par défaut
+        }
+
+        function getColor(row) {
+            const category = getServiceCategory(row);
+            return serviceColors[category] || '#7f8c8d';
         }
 
         // Fonction pour charger et parser le CSV
@@ -140,10 +146,10 @@
                             const lng = parseFloat(row.longitude);
 
                             if (!isNaN(lat) && !isNaN(lng)) {
-                                // Remplacement du marker par un circleMarker (point) avec couleur dynamique
+                                // Remplacement du marker par un circleMarker (point) avec couleur par SERVICE
                                 const marker = L.circleMarker([lat, lng], {
                                     radius: 7,
-                                    fillColor: getColor(row.type_lieu),
+                                    fillColor: getColor(row),
                                     color: "#fff",
                                     weight: 1.5,
                                     opacity: 1,
