@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte de l'Inclusion Numérique - Bordeaux Métropole</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            max-width: 300px;
+        }
+        h1 { font-size: 1.2rem; margin-top: 0; color: #2c3e50; }
+        .popup-content b { color: #e67e22; }
+    </style>
+</head>
+<body>
+
+    <div class="info-panel">
+        <h1>Inclusion Numérique</h1>
+        <p>Visualisation des lieux d'accompagnement numérique sur Bordeaux Métropole.</p>
+        <div id="stats">Chargement des données...</div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- PapaParse pour lire le CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <script>
+        // Initialisation de la carte (centrée sur Bordeaux)
+        const map = L.map('map').setView([44.837789, -0.57918], 12);
+
+        // Utilisation d'un fond de carte alternatif (CartoDB Positron - clair et propre)
+        // Pas d'OpenStreetMap standard comme demandé
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        // Fonction pour charger et parser le CSV
+        function loadData() {
+            Papa.parse('RAW_met_lieux_inclusion_numerique.csv', {
+                download: true,
+                header: true,
+                delimiter: ";", // Important car votre CSV utilise le point-virgule
+                complete: function(results) {
+                    const data = results.data;
+                    let count = 0;
+
+                    data.forEach(row => {
+                        if (row.latitude && row.longitude) {
+                            const lat = parseFloat(row.latitude);
+                            const lng = parseFloat(row.longitude);
+
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                const marker = L.marker([lat, lng]).addTo(map);
+                                
+                                // Contenu de la popup
+                                const popupContent = `
+                                    <div class="popup-content">
+                                        <b>${row.nom}</b><br>
+                                        <i>${row.type_lieu || ''}</i><br><br>
+                                        ${row.adresse_brut || ''}<br>
+                                        <small>${row.contact_telephone || ''}</small><br>
+                                        <p style="font-size: 0.9em; max-height: 100px; overflow-y: auto;">
+                                            ${row.description || 'Pas de description.'}
+                                        </p>
+                                    </div>
+                                `;
+                                marker.bindPopup(popupContent);
+                                count++;
+                            }
+                        }
+                    });
+                    
+                    document.getElementById('stats').innerHTML = `<b>${count}</b> lieux répertoriés.`;
+                },
+                error: function(err) {
+                    console.error("Erreur lors du chargement du CSV:", err);
+                    document.getElementById('stats').innerHTML = "Erreur de chargement.";
+                }
+            });
+        }
+
+        // Lancer le chargement
+        loadData();
+    </script>
+</body>
+</html>
