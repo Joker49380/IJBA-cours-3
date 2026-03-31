@@ -53,6 +53,21 @@
             maxZoom: 20
         }).addTo(map);
 
+        // Ajout du contour de Bordeaux Métropole (via l'API Open Data)
+        fetch('https://data.bordeaux-metropole.fr/api/explore/v2.1/catalog/datasets/fv_commu_s/exports/geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    style: {
+                        color: '#2c3e50',
+                        weight: 2,
+                        fillColor: '#bdc3c7',
+                        fillOpacity: 0.1
+                    }
+                }).addTo(map);
+            })
+            .catch(err => console.error("Erreur chargement GeoJSON:", err));
+
         // Fonction pour charger et parser le CSV
         function loadData() {
             Papa.parse('RAW_met_lieux_inclusion_numerique.csv', {
@@ -69,7 +84,15 @@
                             const lng = parseFloat(row.longitude);
 
                             if (!isNaN(lat) && !isNaN(lng)) {
-                                const marker = L.marker([lat, lng]).addTo(map);
+                                // Remplacement du marker par un circleMarker (point)
+                                const marker = L.circleMarker([lat, lng], {
+                                    radius: 6,
+                                    fillColor: "#e67e22",
+                                    color: "#fff",
+                                    weight: 1,
+                                    opacity: 1,
+                                    fillOpacity: 0.8
+                                }).addTo(map);
                                 
                                 // Contenu de la popup
                                 const popupContent = `
